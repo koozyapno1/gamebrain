@@ -1,0 +1,31 @@
+# secrets
+.env
+*.env
+!.env.example
+*.key
+*.pem
+
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# local packs (keep your own data out of the engine repo)
+packs/*
+!packs/default/
+packs/*/kb.json.bak*
+
+# editors / os
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# logs
+*.log

@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#3a4a26">
+<title>Game Command Centre</title>
+<style>
+:root{
+  --camo1:#3f4a2c; --camo2:#5b6b3a; --camo3:#2b3320; --camo4:#6f7f45; --camo5:#7d8a52;
+  --olive:#4a5533; --khaki:#8a9463; --black:#181c12;
+  --plastic:#3d4238; --plastic-hi:#565c4e; --plastic-lo:#2a2e26;
+  --amber:#ffb000; --amber-dim:#b87c00; --red:#c0392b; --green:#5cb85c;
+  --ink:#e8e4d0; --ink-dim:#a9a58c;
+  --mono:'Courier New',ui-monospace,monospace;
+  --pad:10px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden}
+body{
+  background:radial-gradient(1400px 800px at 50% -20%,#4a5533 0%,#2b3320 60%,#1a1e14 100%) fixed;
+  color:var(--ink);font:13px/1.45 var(--mono);padding:0;
+}
+.camo{position:relative}
+/* camo now lives in the .radio panel backgrounds, so no page-level overlay */
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;border:2px solid var(--plastic-lo);
+  background:linear-gradient(180deg,var(--plastic-hi),var(--plastic));
+  border-radius:5px;padding:7px 11px;color:var(--ink);box-shadow:0 2px 0 #11150d,inset 0 1px 0 #6b7361;
+  transition:.08s;text-transform:uppercase;letter-spacing:.5px;font-size:11.5px;font-weight:700}
+button:hover:not(:disabled){background:linear-gradient(180deg,#646c5b,var(--plastic));border-color:var(--amber-dim)}
+button:active:not(:disabled){transform:translateY(2px);box-shadow:0 0 0 #11150d,inset 0 1px 0 #6b7361}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.pri{background:linear-gradient(180deg,var(--amber),var(--amber-dim));color:#231a00;
+  border-color:#7a5200;box-shadow:0 2px 0 #4a3200,inset 0 1px 0 #ffd97a}
+button.danger{background:linear-gradient(180deg,#a8342a,#7a241c);border-color:#521811;box-shadow:0 2px 0 #3d130e,inset 0 1px 0 #d46154}
+
+/* ===== 3-pane app grid: header + body, body always fits viewport ===== */
+#app{position:relative;z-index:1;height:100dvh;display:flex;flex-direction:column;padding:var(--pad);gap:var(--pad)}
+.radio{
+  /* camo blobs sit ON the moulded plastic, clipped to the panel */
+  background:
+    radial-gradient(ellipse 30px 18px at 12% 22%,rgba(20,26,14,.55) 0 60%,transparent 62%),
+    radial-gradient(ellipse 24px 22px at 34% 68%,rgba(20,26,14,.45) 0 60%,transparent 62%),
+    radial-gradient(ellipse 38px 16px at 58% 18%,rgba(122,134,86,.42) 0 60%,transparent 62%),
+    radial-gradient(ellipse 20px 26px at 76% 52%,rgba(20,26,14,.40) 0 60%,transparent 62%),
+    radial-gradient(ellipse 32px 20px at 90% 84%,rgba(122,134,86,.35) 0 60%,transparent 62%),
+    radial-gradient(ellipse 18px 30px at 8% 88%,rgba(20,26,14,.38) 0 60%,transparent 62%),
+    radial-gradient(ellipse 26px 24px at 48% 42%,rgba(122,134,86,.30) 0 60%,transparent 62%),
+    linear-gradient(180deg,var(--plastic-hi),var(--plastic) 22%,var(--plastic-lo));
+  background-size:260px 260px,260px 260px,260px 260px,260px 260px,260px 260px,260px 260px,260px 260px,100% 100%;
+  border:3px solid #1a1e16;border-radius:12px;padding:9px;position:relative;isolation:isolate;
+  box-shadow:inset 0 1px 0 #7b8371,0 5px 18px rgba(0,0,0,.5);
+}
+/* keep the CRT screen a clean dark panel - no camo over the text */
+.scr{background:#0d1209 !important}
+
+/* the header keeps its own clean plastic - the camo blobs look like smudges
+   on a short bar and collided with the title */
+header.radio{display:flex;align-items:center;gap:12px;padding:8px 12px 15px;flex:0 0 auto;
+  position:relative;
+  background:linear-gradient(180deg,var(--plastic-hi),var(--plastic) 30%,var(--plastic-lo))}
+header.radio::after{content:'';position:absolute;left:10px;right:10px;bottom:5px;height:3px;
+  background:repeating-linear-gradient(90deg,var(--black) 0 9px,transparent 9px 18px);opacity:.55}
+#build{position:absolute;right:10px;bottom:0;font-size:7.5px;color:var(--ink-dim);
+  letter-spacing:.6px;white-space:nowrap;z-index:2;background:#12160e;
+  padding:1px 5px;border-radius:2px;border:1px solid #0c0f08}
+.brand{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1 1 auto}
+.brand .t{font-size:12px;font-weight:700;letter-spacing:1.4px;color:var(--amber);
+  text-shadow:0 0 8px rgba(255,176,0,.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand .s{font-size:8.5px;letter-spacing:1.1px;color:var(--ink-dim);text-transform:uppercase;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.antenna{width:6px;height:28px;background:linear-gradient(90deg,#4c5245,#23271f);
+  border-radius:4px 4px 0 0;border:2px solid #1a1e16;flex:0 0 6px}
+.lamps{display:flex;gap:4px;margin-left:auto;align-items:center;flex:0 1 auto;overflow:hidden}
+.lamp{display:flex;align-items:center;gap:4px;font-size:8.5px;letter-spacing:.5px;color:var(--ink-dim);
+  text-transform:uppercase;background:#12160e;border:1px solid #0c0f08;border-radius:3px;padding:2px 5px;
+  white-space:nowrap;flex:0 1 auto;min-width:0;overflow:hidden}
+.lamp i{width:6px;height:6px;border-radius:50%;background:#3a402f;box-shadow:inset 0 0 3px #000;flex:0 0 6px}
+.lamp.ok i{background:var(--green);box-shadow:0 0 7px rgba(92,184,92,.85)}.lamp.bad i{background:var(--red);box-shadow:0 0 7px rgba(192,57,43,.85)}
+.lamp.amber i{background:var(--amber);box-shadow:0 0 7px rgba(255,176,0,.85)}
+.lamp b{color:var(--ink);font-weight:700;overflow:hidden;text-overflow:ellipsis;max-width:60px}
+
+/* body: 3 columns */
+#body{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:250px minmax(0,1fr) 290px;gap:var(--pad)}
+.pane{min-height:0;min-width:0;display:flex;flex-direction:column;overflow:hidden}
+.scroll{overflow-y:auto;overflow-x:hidden;flex:1 1 auto;min-height:0;padding-right:3px}
+.scroll::-webkit-scrollbar{width:8px}
+.scroll::-webkit-scrollbar-track{background:#12160e}
+.scroll::-webkit-scrollbar-thumb{background:var(--olive);border-radius:4px;border:2px solid #12160e}
+h2.sec{font-size:9px;letter-spacing:1.8px;color:var(--amber);text-transform:uppercase;
+  margin:0 0 6px;padding-bottom:4px;border-bottom:2px solid #12160e;flex:0 0 auto;
+  display:flex;align-items:center;gap:6px}
+h2.sec::before{content:'';width:5px;height:5px;background:var(--amber);transform:rotate(45deg);flex:0 0 5px}
+h2.sec .ct{margin-left:auto;color:var(--ink-dim);letter-spacing:.5px}
+
+/* sector grid: 8 cols (A-H) x 9 rows (1-9) = 72 */
+.grid{display:grid;grid-template-columns:repeat(8,1fr);gap:2px;flex:0 0 auto;margin-bottom:8px}
+.gc{aspect-ratio:1;border-radius:2px;background:#232b18;border:1px solid #12160e;
+  display:flex;align-items:center;justify-content:center;font-size:8.5px;color:var(--ink-dim);
+  cursor:pointer;font-weight:700;min-height:0;overflow:hidden}
+.gc:hover,.gc:active{border-color:var(--amber);color:var(--amber)}
+.gc.hit{background:linear-gradient(180deg,#4a5a2f,#37421f);border-color:var(--amber-dim);color:var(--amber)}
+
+/* chat */
+.chatbox{display:flex;flex-direction:column;min-height:0;overflow:hidden;flex:1;
+  background:linear-gradient(180deg,var(--plastic-hi),var(--plastic) 10%,var(--plastic-lo));
+  border:3px solid #1a1e16;border-radius:12px;
+  box-shadow:inset 0 1px 0 #7b8371,0 5px 18px rgba(0,0,0,.5)}
+.scr{display:flex;flex-direction:column;min-height:0;flex:1;background:#0d1209;
+  border:2px solid #0a0d07;border-radius:7px;margin:8px;box-shadow:inset 0 0 22px rgba(0,0,0,.9)}
+.log{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:9px;min-height:0}
+.log::-webkit-scrollbar{width:8px}
+.log::-webkit-scrollbar-track{background:#0a0d07}
+.log::-webkit-scrollbar-thumb{background:var(--olive);border-radius:4px}
+.msg{max-width:90%;padding:8px 11px;border-radius:3px;line-height:1.55;white-space:pre-wrap;
+  word-break:break-word;animation:pop .15s ease-out;border:1px solid #2b3320}
+@keyframes pop{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.msg.user{align-self:flex-end;background:linear-gradient(180deg,#2f3a1e,#232b16);border-color:#4a5a2f}
+.msg.bot{align-self:flex-start;background:linear-gradient(180deg,#1b2412,#161d0f);border-color:#3d4a2a}
+.msg.bot b{color:var(--amber)}
+.msg.bot i{color:var(--khaki)}
+.msg.bot code{background:#0a0d07;border:1px solid #2b3320;border-radius:3px;padding:1px 4px;
+  font-family:var(--mono);font-size:12px;color:var(--green)}
+.msg.err{align-self:flex-start;background:#2a0f0c;border-color:#7a241c;color:#ffc9c9}
+.msg.thinking{align-self:flex-start;color:var(--amber-dim);font-style:italic;border-color:#2b3320;background:#12180e}
+.msg .cap{display:block;margin-top:7px;padding-top:5px;border-top:1px dashed #3d4a2a;font-size:9.5px;
+  color:var(--ink-dim);letter-spacing:1px;text-transform:uppercase}
+.trace{align-self:flex-start;width:100%;background:#10150b;border:1px solid #2b3320;
+  border-left:3px solid var(--amber);border-radius:3px;padding:7px 10px;font-size:11.5px}
+.trace .tt{color:var(--amber);font-weight:700;letter-spacing:.8px;margin-bottom:3px;font-size:10.5px}
+.trace pre{margin:0;color:var(--khaki);white-space:pre-wrap;word-break:break-word;max-height:150px;
+  overflow:auto;font-family:var(--mono);font-size:11px}
+
+/* boss cards */
+.mt.dmg{color:var(--amber);font-weight:700;letter-spacing:.3px}
+.mt.warn{color:var(--red)}
+.item .mt a.vlink,.vlink{color:var(--amber);text-decoration:none;font-weight:700;
+  letter-spacing:.4px;border-bottom:1px solid var(--amber-dim)}
+.item .mt a.vlink:hover,.vlink:hover{background:var(--amber-dim);color:#231a00}
+.vlink.dim{color:#8a8f7d;font-weight:600;font-size:11px}
+/* markdown links in chat answers */
+.msg.bot a.mdlink{color:var(--amber);text-decoration:none;font-weight:700;border-bottom:1px solid var(--amber-dim)}
+.msg.bot a.mdlink:hover{background:var(--amber-dim);color:#231a00}
+
+/* quick-jump shortcuts - always visible on phones, above the bottom nav */
+#quickref{display:none;flex:0 0 auto;gap:6px;order:9}
+#quickref button{flex:1;font-size:10px;font-weight:700;letter-spacing:.6px;padding:6px 4px;
+  background:linear-gradient(180deg,#23291c,#161b11);color:var(--amber);
+  border:1px solid #3a4430;border-radius:3px;text-transform:uppercase}
+#quickref button:active{background:var(--amber-dim);color:#231a00}
+@media(max-width:900px){#quickref{display:flex}}
+
+/* speaking indicator - the lamp pulses while audio plays */
+body.speaking #speak{background:linear-gradient(180deg,#6de06d,#3f9a3f);color:#041204;
+  border-color:#1d5c1d;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(109,224,109,.6)}70%{box-shadow:0 0 0 11px rgba(109,224,109,0)}}
+
+/* keypad */
+.pad{border-top:3px solid #1a1e16;padding:8px;display:flex;gap:8px;align-items:center;flex:0 0 auto;
+  background:linear-gradient(180deg,var(--plastic),var(--plastic-lo))}
+.padrow{display:flex;gap:8px;align-items:center;width:100%}
+.padrow input[type=text]{flex:1;min-width:0;background:#0d1209;color:var(--green);
+  border:2px solid #0a0d07;border-radius:3px;padding:9px 11px;outline:none;font-family:var(--mono);
+  letter-spacing:.4px;text-shadow:0 0 6px rgba(92,184,92,.5)}
+.padrow input[type=text]:focus{border-color:var(--amber-dim);box-shadow:0 0 10px rgba(255,176,0,.25)}
+#mic{width:38px;height:38px;flex:0 0 38px;padding:0;border-radius:50%;font-size:15px;
+  display:flex;align-items:center;justify-content:center}
+#mic.live{background:linear-gradient(180deg,#d8453a,#8a241c);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(216,69,58,.6)}70%{box-shadow:0 0 0 11px rgba(216,69,58,0)}}
+
+/* reference */
+.tabs{display:flex;gap:3px;margin-bottom:6px;flex:0 0 auto}
+.tabs button{flex:1;font-size:10px;padding:5px 3px}
+.tabs button.on{background:linear-gradient(180deg,var(--amber),var(--amber-dim));color:#231a00;border-color:#7a5200}
+input[type=search]{width:100%;background:#0d1209;border:2px solid #0a0d07;border-radius:3px;padding:6px 9px;
+  margin-bottom:7px;outline:none;color:var(--green);font-family:var(--mono);font-size:11.5px;flex:0 0 auto}
+input[type=search]:focus{border-color:var(--amber-dim)}
+.item{background:#161d0f;border:1px solid #2b3320;border-left:3px solid var(--olive);border-radius:3px;
+  padding:7px 9px;margin-bottom:5px;cursor:pointer;transition:.1s}
+.item:hover,.item:active{border-left-color:var(--amber);background:#1c2412}
+.item .nm{font-weight:700;font-size:11.5px;display:flex;justify-content:space-between;gap:6px;letter-spacing:.3px}
+.item .mt{color:var(--ink-dim);font-size:10.5px;margin-top:2px}
+.tag{font-size:8.5px;padding:2px 5px;border-radius:2px;background:#2b3320;color:var(--khaki);
+  white-space:nowrap;letter-spacing:.6px;font-weight:700;flex:0 0 auto}
+.tag.critical,.tag.extreme{background:#5a1330;color:#fbc4ef}
+.tag.high{background:#5a2010;color:#ffc4a8}
+.tag.medium{background:#4f3d10;color:#ffe1a8}
+.tag.low{background:#1c4a28;color:#b6f0cb}
+.tag.epic{background:#3f2a5e;color:#d5c2f5}
+.tag.legendary{background:#6b4410;color:#ffd9a0}
+.tag.ultra{background:#6b1313;color:#ffb3b3}
+.tag.rare{background:#12464a;color:#a6e6e6}
+.empty{color:var(--ink-dim);font-size:11px;font-style:italic;padding:4px 2px}
+.quick{display:flex;flex-direction:column;gap:4px}
+.quick button{text-align:left;font-size:10.5px;letter-spacing:.2px;text-transform:none;padding:5px 8px}
+.vrow{display:flex;gap:6px;align-items:center;flex:0 0 auto}
+select{background:#0d1209;border:2px solid #0a0d07;border-radius:3px;padding:5px 6px;color:var(--green);
+  font-family:var(--mono);font-size:10.5px;min-width:0;flex:1}
+
+/* mobile bottom nav (hidden on desktop) */
+#nav{display:none;flex:0 0 auto;gap:6px;padding:0;order:10}
+#nav button{flex:1;padding:9px 4px;font-size:10.5px}
+#nav button.on{background:linear-gradient(180deg,var(--amber),var(--amber-dim));color:#231a00;border-color:#7a5200}
+
+@media(max-width:900px){
+  :root{--pad:7px}
+  body{font-size:13px}
+  #app{height:100dvh}
+  #body{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr)}
+  /* only the selected pane is shown on small screens */
+  #app[data-pane="grid"] .pane:not(.pane-grid){display:none}
+  #app[data-pane="chat"] .pane:not(.pane-chat){display:none}
+  #app[data-pane="ref"]  .pane:not(.pane-ref){display:none}
+  #nav{display:flex}
+  .brand .s{display:none}
+  .lamps{gap:4px}
+  .lamp{font-size:8px;padding:2px 5px}
+  .grid{gap:3px}
+  .gc{font-size:10px}
+  .msg{max-width:96%}
+}
+@media(max-width:420px){
+  .lamp span.lbl{display:none}
+  .brand .t{font-size:11px;letter-spacing:1.2px}
+  /* the lamp values squeeze the title out - keep only the coloured dot
+     (status is still readable via the tooltip) */
+  .lamp b{display:none}
+  .lamp{padding:3px 4px}
+  .lamps{gap:3px}
+}
+</style>
+</head>
+<body>
+<div id="app" class="camo" data-pane="chat">
+  <header class="radio">
+    <div class="antenna"></div>
+    <div class="brand">
+      <span class="t" id="brandTitle">GAME COMMAND CENTRE</span>
+      <span class="s" id="brandSub">Loading pack…</span>
+    </div>
+    <div class="lamps" id="health"></div>
+    <span id="build"></span>
+  </header>
+
+  <div id="body">
+    <!-- LEFT: grid + quick -->
+    <div class="pane pane-grid radio">
+      <h2 class="sec"><span id="gridTitle">Map Grid</span> <span class="ct" id="gcount"></span></h2>
+      <div class="grid" id="grid"></div>
+      <h2 class="sec">Quick Request</h2>
+      <div class="scroll">
+        <div class="quick" id="quick"></div>
+        <h2 class="sec" style="margin-top:12px">Voice</h2>
+        <div class="vrow">
+          <select id="voice"></select>
+          <button id="speak" title="Speak all answers">🔊</button>
+          <button id="stopspk" class="danger" title="Stop speaking">⏹</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTRE: chat -->
+    <div class="pane pane-chat">
+      <div class="chatbox">
+        <div class="scr"><div class="log" id="log"></div></div>
+        <div class="pad">
+          <div class="padrow">
+            <button id="mic" title="Voice input (Chrome/Edge)">🎙</button>
+            <input type="text" id="q" placeholder="REQUEST…" autocomplete="off">
+            <button class="pri" id="send">Transmit</button>
+            <button id="clear" title="Clear">🗑</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: reference -->
+    <div class="pane pane-ref radio">
+      <h2 class="sec">Field Reference</h2>
+      <div class="tabs" id="tabs"><button data-t="keys" class="on">Keys</button><button data-t="ops">Ops</button><button data-t="loot">Loot</button><button data-t="pois">POIs</button><button data-t="bosses">Bosses</button><button data-t="boss-videos">Videos</button></div>
+      <input type="search" id="refsearch" placeholder="FILTER…">
+      <div class="scroll"><div id="ref"></div></div>
+    </div>
+  </div>
+
+  <nav id="nav">
+    <button data-p="grid">▦ Grid</button>
+    <button data-p="chat">◉ Comms</button>
+    <button data-p="ref">☰ Ref</button>
+  </nav>
+  <!-- quick-jump shortcuts so Bosses/Videos are reachable without hunting
+       through the Ref pane tabs -->
+  <div id="quickref"><button data-t="bosses">BOSSES</button><button data-t="boss-videos">VIDEOS</button></div>
+</div>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const log=$('#log'), ref=$('#ref'), q=$('#q');
+let KB=null, tab='keys', streaming=false, speakAll=true,
+    voice='af_bella', PACK=null, REF_TABS=[], GRID={};
+const LETTERS='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+async function health(){
+  try{
+    const r=await fetch('/health',{cache:'no-store'});
+    const h=await r.json();
+    $('#health').innerHTML=
+      `<span class="lamp ${h.ok?'ok':'bad'}" title="assistant brain"><i></i><span class="lbl">brn</span><b>${esc(h.model||'')}</b></span>`+
+      `<span class="lamp ${h.kb_loaded?'ok':'bad'}" title="pack knowledge base"><i></i><span class="lbl">kb</span><b>${h.kb_sections||0}</b></span>`+
+      `<span class="lamp ${h.tools?'ok':'bad'}" title="tools available"><i></i><span class="lbl">tool</span><b>${h.tools||0}</b></span>`+
+      `<span class="lamp ${h.tts?'ok':'bad'}" title="text to speech"><i></i><span class="lbl">tts</span><b>${h.tts?'on':'off'}</b></span>`+
+      `<span class="lamp ${h.escalation?'ok':'bad'}" title="escalation agent"><i></i><span class="lbl">ask</span><b>${h.escalation?'on':'off'}</b></span>`;
+  }catch(e){$('#health').innerHTML='<span class="lamp bad" title="no contact with the radio"><i></i><span class="lbl">off</span><b>retry</b></span>';}
+}
+/* show the build stamp so a stale cached copy is obvious */
+async function stamp(){
+  try{
+    const r=await fetch('/build',{cache:'no-store'});
+    const j=await r.json();
+    $('#build').textContent=j&&j.build?'BUILD '+j.build:'';
+  }catch(e){}
+}
+async function loadVoices(){
+  try{
+    const v=await (await fetch('/tts/voices')).json();
+    voice=v.default||voice;
+    $('#voice').innerHTML=(v.voices||[]).map(x=>`<option ${x===voice?'selected':''}>${x}</option>`).join('');
+  }catch(e){}
+}
+$('#voice').onchange=e=>{voice=e.target.value};
+
+/* ---------- audio ---------- */
+/* The AudioContext is created once on the first user gesture so the browser
+   allows playback later without needing an unlock per play. */
+let audioCtx=null, currentAudio=null, currentUrl=null, mediaSrc=null;
+let ttsAbort=null, ttsReader=null;
+
+/* A tiny silent WAV used to prime playback. Mobile Chrome requires a real
+   user gesture before it will let an <audio> element make noise, and the
+   answer arrives seconds later - long after the gesture is over. Playing a
+   muted sample during the gesture unlocks the element for later. */
+const SILENT_WAV='data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YQAAAAA=';
+
+function ensureCtx(){
+  if(!audioCtx){
+    try{audioCtx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}
+  }
+  if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});
+  return audioCtx;
+}
+/* Call this from inside a real click/tap handler. */
+function primeAudio(){
+  ensureCtx();
+  try{
+    if(!currentAudio){
+      const a=new Audio(SILENT_WAV);
+      a.volume=0; a.muted=true;
+      currentAudio=a;
+      a.play().then(()=>{a.pause();a.currentTime=0;}).catch(()=>{});
+    }else if(currentAudio.paused){
+      currentAudio.currentTime=0;
+      currentAudio.play().catch(()=>{});
+    }
+  }catch(e){}
+}
+function stopSpeak(){
+  if(currentAudio){currentAudio.pause();try{currentAudio.currentTime=0;}catch(e){}currentAudio=null;}
+  if(currentUrl){URL.revokeObjectURL(currentUrl);currentUrl=null;}
+  if(mediaSrc){try{mediaSrc.endOfStream();}catch(e){}mediaSrc=null;}
+  /* cancel any in-flight TTS fetch - an uncancelled reader holds the HTTP/2
+     stream open and Chrome caps us at ~6 per origin, which makes every
+     LATER fetch fail with "Failed to fetch" */
+  if(ttsAbort){try{ttsAbort.abort();}catch(e){}ttsAbort=null;}
+  if(ttsReader){try{ttsReader.cancel();}catch(e){}ttsReader=null;}
+  try{window.speechSynthesis&&speechSynthesis.cancel()}catch(e){}
+  document.body.classList.remove('speaking');
+}
+
+/* Speak via MediaSource so audio STARTS PLAYING while it is still
+   downloading. A plain fetch+blob() waits for the whole file, and the
+   resulting play() can be refused by the autoplay policy. */
+async function speak(text){
+  if(!text)return;
+  stopSpeak();
+  ensureCtx();
+  const chunk=String(text).slice(0,2500);
+  /* Resolve when playback actually finishes, so a queued follow-up chunk
+     does not cancel the one still playing. */
+  let doneResolve;
+  const done=new Promise(r=>{doneResolve=r;});
+  const doneGuard=setTimeout(()=>doneResolve(),Math.max(8000,chunk.length*90));
+  try{
+    ttsAbort=new AbortController();
+    const res=await fetch('/tts/stream',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text:chunk,voice:voice}),
+      signal:ttsAbort.signal});
+    if(!res.ok)throw new Error('tts '+res.status);
+    const ctype=res.headers.get('Content-Type')||'audio/wav';
+    const mime=/wav/i.test(ctype)?'audio/wav':ctype;
+    if(!window.MediaSource||!MediaSource.isTypeSupported(mime)){
+      const blob=await res.blob();
+      playBlob(blob,chunk);
+      await done;
+      return;
+    }
+    const ms=new MediaSource();
+    mediaSrc=ms;
+    const url=URL.createObjectURL(ms);
+    currentUrl=url;
+    const a=new Audio(url);
+    currentAudio=a;
+    a.onplay=()=>document.body.classList.add('speaking');
+    a.onended=()=>{document.body.classList.remove('speaking');
+      if(currentAudio===a){currentAudio=null;}doneResolve();};
+    a.onerror=()=>{document.body.classList.remove('speaking');fallbackSpeak(chunk);doneResolve();};
+    a.play().catch(()=>{});
+    await new Promise((resolve,reject)=>{
+      const onopen=()=>{try{ms.removeEventListener('sourceopen',onopen);resolve();}catch(e){resolve();}};
+      ms.addEventListener('sourceopen',onopen);
+      setTimeout(()=>resolve(),3000);
+    });
+    const sb=ms.addSourceBuffer(mime);
+    sb.mode='segments';
+    const reader=res.body.getReader();
+    ttsReader=reader;
+    try{
+      while(true){
+        const {done,value}=await reader.read();
+        if(done)break;
+        if(sb.updating){
+          await new Promise(r=>sb.addEventListener('updateend',r,{once:true}));
+        }
+        try{sb.appendBuffer(value);}catch(e){}
+        /* data is buffered - (re)start playback */
+        try{a.play().catch(()=>{});}catch(e){}
+      }
+    }catch(e){}
+    finally{ttsReader=null;ttsAbort=null;}
+    try{ms.endOfStream();}catch(e){}
+    await done;
+  }catch(e){
+    fallbackSpeak(chunk);
+  }finally{
+    clearTimeout(doneGuard);
+  }
+}
+/* Speech queue - chunks play in order, one after the other. */
+let speakChain=Promise.resolve();
+function speakQueued(text){
+  const t=String(text||'').trim();
+  if(!t)return;
+  speakChain=speakChain.then(()=>speak(t)).catch(()=>{});
+  return speakChain;
+}
+function playBlob(blob,text){
+  const url=URL.createObjectURL(blob);
+  currentUrl=url;
+  const a=new Audio(url);currentAudio=a;
+  a.onplay=()=>document.body.classList.add('speaking');
+  a.onended=()=>{document.body.classList.remove('speaking');
+    if(currentAudio===a){currentAudio=null;URL.revokeObjectURL(url);currentUrl=null;}};
+  a.onerror=()=>{document.body.classList.remove('speaking');fallbackSpeak(text);};
+  a.play().catch(()=>{fallbackSpeak(text);});
+}
+/* browser speech synthesis fallback */
+function fallbackSpeak(text){
+  try{
+    if(!window.speechSynthesis)return;
+    const u=new SpeechSynthesisUtterance(text.slice(0,1500));
+    u.rate=1.05;u.pitch=.95;
+    u.onstart=()=>document.body.classList.add('speaking');
+    u.onend=()=>document.body.classList.remove('speaking');
+    speechSynthesis.cancel();speechSynthesis.speak(u);
+  }catch(_){}
+}
+$('#speak').onclick=()=>{speakAll=!speakAll;
+  $('#speak').textContent=speakAll?'🔊✓':'🔊';
+  $('#speak').classList.toggle('pri',speakAll);
+  if(speakAll)ensureCtx();};
+$('#stopspk').onclick=stopSpeak;
+
+async function loadPack(){
+  try{
+    const p=await (await fetch('/pack',{cache:'no-store'})).json();
+    PACK=p;REF_TABS=p.ref_tabs||[];GRID=p.ui||{};
+    tab=(REF_TABS[0]&&REF_TABS[0].id)||'keys';
+    renderTabs();
+    const bt=$('#brandTitle');if(bt)bt.textContent=(p.ui&&p.ui.brand_title)||p.name||'GAME COMMAND CENTRE';
+    const bs=$('#brandSub');if(bs)bs.textContent=(p.ui&&p.ui.brand_subtitle)||p.subtitle||'';
+    const gt=$('#gridTitle');if(gt)gt.textContent=(p.ui&&p.ui.grid_title)||'Map Grid';
+    document.title=p.name||'Command Centre';
+    renderQuick();
+    return p;
+  }catch(e){console.warn('pack load failed',e);return null}
+}
+function renderQuick(){
+  const q=$('#quick');
+  if(!q)return;
+  const prompts=(PACK&&PACK.quick_prompts)||[];
+  q.innerHTML=prompts.map(t=>`<button>${esc(t)}</button>`).join('');
+  q.querySelectorAll('button').forEach((b,i)=>{
+    b.onclick=()=>ask(prompts[i]);
+  });
+}
+async function loadKB(){
+  /* The pack manifest declares which reference tabs exist; the server
+     serves each one pre-shaped. */
+  const kinds=REF_TABS.map(t=>t.id);
+  const out={};
+  await Promise.all(kinds.map(async k=>{
+    try{
+      const j=await (await fetch('/ref/'+k)).json();
+      out[k]=j.items||[];
+      if(j.strategies)out[k+'_strategies']=j.strategies;
+    }catch(e){out[k]=[]}
+  }));
+  KB=out;buildGrid();renderRef();
+}
+function buildGrid(){
+  const g=$('#grid');g.innerHTML='';
+  const hit=new Set();
+  for(const k of Object.keys(KB)){
+    for(const it of (KB[k]||[])){
+      if(it&&it.grid)hit.add(String(it.grid).toUpperCase());
+    }
+  }
+  const cols=GRID.cols||GRID.grid_cols||8, rows=GRID.rows||GRID.grid_rows||9;
+  const letters='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').slice(0,cols);
+  let n=0;
+  letters.forEach(c=>{
+    for(let r=1;r<=rows;r++){
+      const id=c+r,el=document.createElement('div');
+      el.className='gc'+(hit.has(id)?' hit':'');el.textContent=id;
+      el.onclick=()=>ask((GRID.question||GRID.grid_question||'What is in sector {sector}?')
+        .replace('{sector}',id));
+      if(hit.has(id))n++;
+      g.appendChild(el);
+    }
+  });
+  $('#gcount').textContent=n+'/'+(cols*rows);
+}
+function tag(t,c){return c?`<span class="tag ${c}">${t}</span>`:`<span class="tag">${t}</span>`}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function md(s){let t=esc(s);
+  t=t.replace(/`([^`\n]+)`/g,'<code>$1</code>');
+  t=t.replace(/\*\*([^*\n]+)\*\*/g,'<b>$1</b>');
+  t=t.replace(/(^|[\s(])\*([^*\n]+)\*/g,'$1<i>$2</i>');
+  /* markdown links -> clickable anchors. The model returns video links as
+     [Title](https://www.youtube.com/watch?v=ID); without this they render as
+     literal "[Title](url)" text. Only http/https/mailto are allowed so a
+     crafted answer cannot inject javascript: URLs. */
+  t=t.replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+|mailto:[^\s)]+)\)/g,
+    (m,title,url)=>`<a class="mdlink" href="${url}" target="_blank" rel="noopener">${title}</a>`);
+  /* bare URLs that are not already inside an anchor */
+  t=t.replace(/(^|[\s(])(https?:\/\/[^\s<>)\]]+)/g,
+    (m,pre,url)=>`${pre}<a class="mdlink" href="${url}" target="_blank" rel="noopener">${url}</a>`);
+  return t.replace(/\n/g,'<br>')}
+/* Text for TTS: drop link text AND the URL, so a video link is never read
+   aloud (the title would otherwise be spoken as if it were prose).
+   ONLY links are touched here - bold/italic/code markers are left alone
+   because the SERVER's _split_for_speech() strips those correctly.
+   LENGTH-PRESERVING: every removed character becomes a space, so the
+   character offsets computed on the stripped string still index the
+   original `answer` exactly - otherwise spokenUpTo would drift and
+   sentences would be skipped or repeated. */
+function stripForSpeech(s){
+  let t=String(s==null?'':s);
+  t=t.replace(/\[([^\]\n]+)\]\([^\s)]+\)/g,
+    m=>m.replace(/[^]/g,' '));
+  return t;
+}
+function renderRef(){
+  const tabDef=REF_TABS.find(t=>t.id===tab)||{};
+  const qy=(($('#refsearch')||{}).value||'').trim().toLowerCase();
+  let r=KB[tab]||[];
+  if(qy){
+    /* Filter on the rendered fields, not just the name - otherwise the
+       FILTER box only matches titles and looks broken. */
+    r=r.filter(item=>{
+      const nm=String(item.name||item.title||item.slug||'').toLowerCase();
+      if(nm.includes(qy))return true;
+      const fields=tabDef.fields||[];
+      return fields.some(f=>{
+        const v=item[f];
+        if(v==null)return false;
+        return (Array.isArray(v)?v.join(' '):String(v)).toLowerCase().includes(qy);
+      });
+    });
+  }
+  const el=$('#ref');
+  if(!r.length){
+    el.innerHTML='<div class="empty">NO MATCHES</div>';return;
+  }
+  const fields=tabDef.fields||[];
+  el.innerHTML=r.map(item=>{
+    const nm=item.name||item.title||item.slug||'';
+    const sub=fields.filter(f=>f!=='name'&&f!=='title'&&f!=='slug')
+      .map(f=>{
+        let v=item[f];
+        if(Array.isArray(v))v=v.join(', ');
+        if(v===undefined||v===null||v==='')return '';
+        if(f==='url'||f==='link'){
+          return `<a class="vlink" href="${esc(v)}" target="_blank" rel="noopener">▶ WATCH</a>`;
+        }
+        return `<span class="mt">${esc(f)}: ${esc(v)}</span>`;
+      }).filter(Boolean).join(' ');
+    const vid=(item.videos||[]);
+    const vlinks=vid.map(v=>`<a class="vlink" href="${esc(v.url)}" target="_blank" rel="noopener">${v.dedicated?'▶':'▸'} ${esc((v.title||v.id||'').slice(0,44))}</a>`).join(' ');
+    return `<div class="item" data-ask="${esc(nm)}">
+      <div class="nm"><span>${esc(nm)}</span>${item.kind?tag(item.kind,item.kind===(tabDef.primary_kind||item.kind)?'amber':'green'):''}</div>
+      <div class="mt">${sub}</div>${vlinks?'<div class="mt">'+vlinks+'</div>':''}
+    </div>`;
+  }).join('');
+  el.querySelectorAll('.item').forEach(it=>{
+    it.onclick=()=>ask(it.dataset.ask);
+  });
+  el.querySelectorAll('a.vlink').forEach(a=>a.onclick=e=>e.stopPropagation());
+}
+function add(cls,txt){
+  const d=document.createElement('div');d.className='msg '+cls;
+  if(cls==='bot')d.innerHTML=md(txt);else d.textContent=txt;
+  log.appendChild(d);log.scrollTop=log.scrollHeight;return d;
+}
+async function ask(text){
+  if(!text||streaming)return;
+  add('user',text);q.value='';streaming=true;$('#send').disabled=true;
+  let th=add('thinking','RECEIVING…'),answer='',botEl=null,spokenUpTo=0;
+  try{
+    const res=await fetch('/chat/stream',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({message:text})});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const rd=res.body.getReader(),dec=new TextDecoder();let buf='';
+    try{
+      while(true){
+        const {done,value}=await rd.read();if(done)break;
+        buf+=dec.decode(value,{stream:true});
+        const parts=buf.split('\n\n');buf=parts.pop();
+        for(const p of parts){
+          // SSE comment (heartbeat) - ignore
+          if(p.startsWith(':'))continue;
+          const m=p.match(/^data:\s*(.+)$/s);if(!m)continue;
+          if(m[1].trim()==='[DONE]')continue;
+          let ev;try{ev=JSON.parse(m[1])}catch(e){continue}
+          if(ev.type==='tool'){
+            th.remove();
+            const d=document.createElement('div');d.className='trace';
+            d.innerHTML=`<div class="tt">⚙ ${esc(ev.tool)} ${esc(JSON.stringify(ev.args))}</div><pre>${esc(fmt(ev.result))}</pre>`;
+            log.appendChild(d);log.scrollTop=log.scrollHeight;
+            th=add('thinking','RECEIVING…');
+          }else if(ev.type==='delta'){
+            /* Token streamed from the server - render live and speak the
+               first sentence as soon as it is complete, so audio starts
+               while the rest of the answer is still decoding. */
+            answer+=ev.content||'';
+            if(!botEl){
+              th.remove();
+              botEl=add('bot','');
+              botEl.dataset.said='0';
+            }
+            botEl.innerHTML=md(answer);
+            log.scrollTop=log.scrollHeight;
+            /* Speak each sentence as soon as it completes. spokenUpTo
+               tracks how much has already been queued so we never repeat
+               a sentence and never skip one. */
+            if(speakAll){
+              /* Strip links BEFORE splitting: a YouTube URL contains '?' and
+                 '.', so splitting first can cut it in half and the raw
+                 markdown leaks into the spoken text.
+                 The strip is LENGTH-PRESERVING (links become spaces of the
+                 same length), so the cut offsets computed on the stripped
+                 string map back onto the raw `answer` exactly - otherwise
+                 spokenUpTo would drift and sentences would be skipped or
+                 repeated. */
+              const speakText=stripForSpeech(answer);
+              const cut=sentenceEnd(speakText);
+              if(cut>spokenUpTo){
+                /* Queue ONLY the newly completed sentence - queueing the
+                   whole prefix would re-speak earlier sentences. */
+                speakQueued(speakText.slice(spokenUpTo,cut));
+                spokenUpTo=cut;
+              }
+            }
+          }else if(ev.type==='answer'){
+            answer=ev.content||answer;th.remove();
+            if(botEl)botEl.innerHTML=md(answer);
+          }
+          else if(ev.type==='error'){th.remove();add('err','ERROR: '+ev.error);}
+        }
+      }
+    }finally{
+      /* release the connection - an uncancelled reader leaks an HTTP/2 stream
+         and Chrome caps us at ~6 per origin */
+      try{rd.cancel();}catch(e){}
+    }
+  }catch(e){
+    /* The SSE stream can die mid-body (a long silent gap upstream is enough
+       for the mobile NAT / Cloudflare to drop it). Chrome reports that as
+       "network error". A half-read stream cannot be resumed, so retry the
+       whole thing over a single non-streaming response. */
+    if(th.parentNode)th.remove();
+    th=add('thinking','RECONNECTING…');
+    try{
+      const r2=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({message:text})});
+      if(!r2.ok)throw new Error('HTTP '+r2.status);
+      const j=await r2.json();
+      answer=j.answer||j.content||'';
+      (j.tools_used||[]).forEach(tl=>{
+        const d=document.createElement('div');d.className='trace';
+        d.innerHTML=`<div class="tt">⚙ ${esc(tl.tool)} ${esc(JSON.stringify(tl.args))}</div><pre>${esc(fmt(tl.result))}</pre>`;
+        log.appendChild(d);
+      });
+    }catch(e2){
+      if(th.parentNode)th.remove();
+      add('err','REQUEST FAILED: '+(e2.message||e.message));
+      streaming=false;$('#send').disabled=false;
+      return;
+    }
+  }finally{
+    if(th.parentNode)th.remove();
+  }
+  const b=add('bot',answer||'(NO RESPONSE)');
+  b.insertAdjacentHTML('beforeend','<span class="cap">◉ HASCOM · '+new Date().toLocaleTimeString('en-GB')+'</span>');
+  if(speakAll){
+    /* Queue only what has not been spoken yet. */
+    if(spokenUpTo<answer.length){
+      speakQueued(stripForSpeech(answer).slice(spokenUpTo));
+    }
+  }
+  streaming=false;$('#send').disabled=false;
+}
+/* Return the index just past the end of the LAST complete sentence in `t`
+   (a . ! ? followed by whitespace or end-of-string). Returns 0 if no
+   sentence has finished yet.
+
+   We deliberately do NOT split on decimals ("F4." inside "grid F4." is
+   handled by requiring a space/EOL after the punctuation) and we ignore
+   common abbreviations so "grid F4." does not cut a sentence short. */
+const ABBREV=/\b(?:Mr|Mrs|Ms|Dr|St|Jr|Sr|Lt|Col|Gen|Sgt|Capt|Cmdr|No|vs|etc|Inc|Ltd|Co)\.$/i;
+function sentenceEnd(t){
+  const s=String(t||'');
+  let last=0;
+  const re=/[.!?](?:\s|$)/g;
+  let m;
+  while((m=re.exec(s))!==null){
+    const end=m.index+m[0].length;
+    /* skip an abbreviation or a decimal point ("3.5", "F4.") */
+    const head=s.slice(Math.max(0,m.index-12),m.index+1);
+    if(ABBREV.test(head))continue;
+    if(/\d\.$/.test(head))continue;
+    last=end;
+  }
+  return last;
+}
+function fmt(o){
+  if(o==null)return'';if(typeof o!=='object')return String(o);
+  if(Array.isArray(o))return o.map(x=>typeof x==='object'?JSON.stringify(x):String(x)).join('\n');
+  return Object.entries(o).map(([k,v])=>k+': '+(typeof v==='object'?JSON.stringify(v):String(v))).join('\n');
+}
+$('#send').onclick=()=>{primeAudio();ask(q.value);};
+q.addEventListener('keydown',e=>{if(e.key==='Enter'){primeAudio();ask(q.value);}});
+$('#clear').onclick=()=>{log.innerHTML='';stopSpeak()};
+$('#refsearch').oninput=renderRef;
+
+/* Reference tabs come from the pack manifest, not from hardcoded markup.
+   renderTabs() is called after the pack loads, so one engine serves any
+   pack's tab set. */
+function renderTabs(){
+  const el=$('#tabs');if(!el)return;
+  el.innerHTML=REF_TABS.map((t,i)=>
+    `<button data-t="${esc(t.id)}" class="${i===0?'on':''}">${esc(t.label||t.id)}</button>`
+  ).join('');
+  el.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+    el.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');
+    tab=b.dataset.t;renderRef();});
+  if(REF_TABS.length){
+    const first=REF_TABS[0].id;
+    tab=first;
+    el.querySelector(`button[data-t="${first}"]`)?.classList.add('on');
+  }
+}
+
+$$('#tabs button').forEach(b=>b.onclick=()=>{
+  $$('#tabs button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  tab=b.dataset.t;renderRef();});
+
+/* pane switching (mobile) */
+function go(p){
+  $('#app').dataset.pane=p;
+  $$('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.p===p));
+}
+$$('#nav button').forEach(b=>b.onclick=()=>go(b.dataset.p));
+/* quick-jump: open the Ref pane on the requested tab */
+$$('#quickref button').forEach(b=>b.onclick=()=>{
+  $$('#tabs button').forEach(x=>x.classList.remove('on'));
+  const t=$$('#tabs button').find(x=>x.dataset.t===b.dataset.t);
+  if(t)t.classList.add('on');
+  tab=b.dataset.t;renderRef();go('ref');
+});
+
+/* quick prompts are rendered from the pack manifest (see renderQuick()) */
+
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+if(!SR){$('#mic').title='Voice input needs Chrome or Edge';$('#mic').style.opacity=.4;}
+else{
+  const rec=new SR();rec.lang='en-GB';rec.interimResults=true;rec.continuous=false;
+  let base='';
+  rec.onstart=()=>{$('#mic').classList.add('live')};
+  rec.onresult=e=>{let t='';for(let i=e.resultIndex;i<e.results.length;i++)t+=e.results[i][0].transcript;q.value=base+t;};
+  rec.onerror=e=>{$('#mic').classList.remove('live');add('err','VOICE ERROR: '+e.error)};
+  rec.onend=()=>{$('#mic').classList.remove('live');if(q.value&&q.value.trim())ask(q.value)};
+  $('#mic').onclick=()=>{primeAudio();base=q.value?q.value+' ':'';try{rec.start()}catch(e){}};
+}
+
+loadPack().then(()=>{health();loadKB();loadVoices();stamp();});
+/* Poll gently. Chrome caps concurrent HTTP/2 streams per origin (~6), so
+   frequent polling plus an open TTS stream can starve the chat fetch and
+   every request fails with "Failed to fetch". */
+setInterval(health,30000);setInterval(stamp,120000);
+go('chat');
+/* speak is ON by default - reflect it in the button */
+$('#speak').textContent='🔊✓';$('#speak').classList.add('pri');
+/* unlock audio on the first tap anywhere (browser autoplay policy) */
+['pointerdown','keydown','touchstart'].forEach(ev=>
+  document.addEventListener(ev,()=>{ensureCtx();primeAudio();},{once:true,capture:true}));
+/* greet so an empty screen doesn't look broken.
+   Wait for the KB so the sector count is right (it fires before loadKB
+   resolves and used to report 0/72). */
+function greet(){
+  if(log.children.length) return;
+  const hits=document.querySelectorAll('.gc.hit').length;
+  const nk=(KB&&KB.keys||[]).length, no=(KB&&KB.ops||[]).length, nl=(KB&&KB.loot||[]).length;
+  add('bot',
+    '**HASCOM RADIO — CHANNEL 1 ONLINE.**\n\n'+
+    'Grid **A1–H9** is loaded (**'+hits+'/72** sectors with intel). '+
+    (nk?nk+' keys, '+no+' operations and '+nl+' loot items indexed.':'')+
+    '\n\nTap a sector on the **GRID** tab, or ask below. Use 🎙 for voice.');
+}
+setTimeout(greet,600);
+/* if the KB arrives late, refresh the greeting */
+setTimeout(()=>{if(log.children.length===1&&log.children[0].classList.contains('bot')){greet();}},2500);
+</script>
+</body>
+</html>

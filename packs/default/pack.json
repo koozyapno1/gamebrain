@@ -1,0 +1,186 @@
+{
+  "id": "dmz",
+  "name": "DMZ Command Centre",
+  "subtitle": "Call of Duty: Modern Warfare 4 - DMZ / Hajin - Radio 1",
+  "version": "1.0.0",
+  "kb": "kb.json",
+
+  "ui": {
+    "brand_title": "DMZ COMMAND CENTRE",
+    "brand_subtitle": "Hascom Unit - Hajin Theatre - Radio 1",
+    "grid_title": "Sector Grid",
+    "grid_question": "What is in sector {sector}?",
+    "grid_cols": 8,
+    "grid_rows": 9
+  },
+
+  "quick_prompts": [
+    "What is in sector B5?",
+    "How do I get the Command Office key?",
+    "What does The Doctor drop?",
+    "How do I beat Colossus?",
+    "Where is the best loot on the map?",
+    "What printer recipes are there?"
+  ],
+
+  "known_facts": [
+    "The map is Hajin.",
+    "There are 6 operations: Silent Ledger, Critical Extraction, Fallen Ember, Grid Assault, Iron Citadel, Shopping Hacks.",
+    "There are 10 Lieutenants and 3 Commanders (13 bosses in total).",
+    "The sector grid is 8 columns (A-H) by 9 rows (1-9), so 72 sectors."
+  ],
+
+  "entity_words": [
+    "hajin", "lieutenant", "commander", "sector", "printer", "blueprint",
+    "poi", "supply crate", "ammo cache", "extract", "extraction", "dmz",
+    "hajin theatre", "hascom", "lieutenants", "commanders"
+  ],
+
+  "system_prompt": "You are the DMZ intel assistant for Call of Duty: Modern Warfare 4's DMZ map (Hajin).\n\nThe Boss Board has 13 bosses: 3 roaming Commanders (Colossus, Deathstalker, Tank) and 10 Lieutenants (Bale, The Chemist, The Doctor, Gorani, Iskra, Jang-ui, Jin-Tae, Roze, The Scavenger, The Warden).\n\nBOSS damage rules: copy the boss_guide 'damage_rule' field VERBATIM and put it in your answer. Also always include 'do_not_use' and 'best_against' for a commander. NEVER paraphrase the damage rule. Bullets and explosives are opposites on these bosses and a paraphrase can invert the advice. The 'damage_type' field is a single token - bullets_only, explosives_only or normal - and 'damage_rule' is the sentence to quote:\n  bullets_only    -> \"BULLETS ONLY - explosives do nothing to it\"\n  explosives_only -> \"EXPLOSIVES ONLY - bullets do no damage at all\"\n  normal          -> \"NORMAL DAMAGE - bullets work fine, ...\"\nSay the rule in capitals. Saying 'explosives and bullets' for a boss that is immune to explosives is dangerous advice.\n\nIf a boss has no dedicated fight video, say so honestly and give the roundup chapter link instead. Do not invent a video link that is not in the 'videos' array.",
+
+  "tools": [
+    {
+      "name": "sector_query",
+      "description": "Look up what's in a DMZ grid sector (e.g. 'B5'), or search POIs/places by name. Returns POIs, threat levels, keys and operations in that sector.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sector": {"type": "string", "description": "Grid square like B5"},
+          "query": {"type": "string", "description": "Name/place search term"}
+        }
+      },
+      "match_words": ["sector", "grid", "poi", "where is", "what is in"],
+      "query": {
+        "mode": "sector",
+        "params": ["sector", "query"]
+      }
+    },
+    {
+      "name": "boss_guide",
+      "description": "Look up how to beat a DMZ boss (Colossus, Deathstalker, Tank, Chemist, Warden, Gorani, Bale, Roze, Iskra, Jang-ui, Jin-Tae, Doctor, Scavenger). Returns where it is, what it drops, what defeats it, step-by-step tactics AND the boss's YouTube video link(s) in the 'videos' field (id/title/author/url). ALWAYS include a video link from that field in your answer. Omit the name for the full boss list.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "boss": {"type": "string", "description": "Boss name e.g. 'Colossus' or 'commander'"}
+        }
+      },
+      "match_words": ["boss", "commander", "lieutenant", "how do i beat", "kill"],
+      "query": {
+        "mode": "boss",
+        "params": ["boss"],
+        "include": [
+          "name", "kind", "grid", "where", "difficulty", "weapon", "drops",
+          "weakness", "bounty", "what_it_is", "how_to_beat", "tip",
+          "damage_type", "damage_rule", "do_not_use", "best_against",
+          "has_dedicated_video", "no_dedicated_note"
+        ]
+      }
+    },
+    {
+      "name": "boss_videos",
+      "description": "Find YouTube video guides for DMZ bosses, commanders and lieutenants. Returns video titles and links.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "topic": {"type": "string", "description": "Boss name or topic e.g. 'Colossus'"}
+        }
+      },
+      "match_words": ["video", "youtube", "watch"],
+      "query": {
+        "mode": "videos",
+        "params": ["topic"],
+        "videos_collection": "videos",
+        "entities_collection": "entities",
+        "match": "name",
+        "video_entity_field": "entity"
+      }
+    },
+    {
+      "name": "item_lookup",
+      "description": "Look up a loot item or 3D-printer recipe: ingredients, rarity, unlock level, and the best places to find it.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item": {"type": "string", "description": "Item name e.g. 'Medkit'"}
+        },
+        "required": ["item"]
+      },
+      "match_words": ["loot", "item", "recipe", "printer", "blueprint", "medkit"],
+      "query": {
+        "mode": "item",
+        "params": ["item"]
+      }
+    },
+    {
+      "name": "key_lookup",
+      "description": "Look up a DMZ key: rarity, grid square, location, and how to obtain it (random loot / lieutenant drop / operation reward / apartment locker).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "key": {"type": "string", "description": "Key name"}
+        },
+        "required": ["key"]
+      },
+      "match_words": ["key", "locker", "unlock"],
+      "query": {
+        "mode": "key",
+        "params": ["key"]
+      }
+    },
+    {
+      "name": "mission_brief",
+      "description": "Full briefing for a DMZ operation: grid, threat, recommended gear, chapter, numbered steps, and the key rewarded on completion. Also covers Orders tasks.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "mission": {"type": "string", "description": "Operation or order name"}
+        },
+        "required": ["mission"]
+      },
+      "match_words": ["operation", "mission", "order", "brief"],
+      "query": {
+        "mode": "mission",
+        "params": ["mission"]
+      }
+    }
+  ],
+
+  "ref_tabs": [
+    {
+      "id": "keys",
+      "label": "Keys",
+      "kind": "keys",
+      "collection": "key_lookup"
+    },
+    {
+      "id": "ops",
+      "label": "Ops",
+      "kind": "ops",
+      "collection": "operations"
+    },
+    {
+      "id": "loot",
+      "label": "Loot",
+      "kind": "loot",
+      "collection": "loot_items"
+    },
+    {
+      "id": "pois",
+      "label": "POIs",
+      "kind": "pois",
+      "collection": "pois"
+    },
+    {
+      "id": "bosses",
+      "label": "Bosses",
+      "kind": "bosses",
+      "collection": "entities"
+    },
+    {
+      "id": "boss-videos",
+      "label": "Videos",
+      "kind": "videos",
+      "collection": "videos"
+    }
+  ]
+}
